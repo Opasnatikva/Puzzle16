@@ -12,6 +12,7 @@ AROUND_ABOVE_MOVE_RIGHT = "wddsa"
 UP_RIGHT_DOWN = "wds"
 ARRANGE_LAST_TWO_COLS = "dwwas"
 GET_PENULTIMATE_NUMBER_OUT_OF_CORNER = "dwassdwawdsa"
+GET_SECOND_TO_LAST_NUMBER_OUT = "sawddsawasdw"
 
 
 def generate_board(size=BOARD_SIZE):
@@ -75,8 +76,8 @@ def generate_movement_sequence(length=500):
 
 def take_user_input():
     while True:
-        direction = input("'w', 'a', 's', or 'd'.")
-        if direction in ['w', 'a', 's', 'd']:
+        direction = input("'w', 'a', 's', or 'd'. Type 'solve' to get the solution.")
+        if direction in ['w', 'a', 's', 'd', 'solve']:
             return direction
 
 
@@ -136,14 +137,8 @@ def movement_of_standard_element(empty_row_index, empty_col_index, value_row_ind
     return sequence
 
 
-# def movement_two_rightmost_elements(empty_row_index, empty_col_index, value_row_index, value_col_index):
-#     rightmost_number_row_index, rightmost_number_col_index =
-
-
 def self_solve_algorithm(board, win_con):
-    # for number in range(1, BOARD_SIZE * BOARD_SIZE):
-    # number = 3
-    for number in range(1, 9):
+    for number in range(1, BOARD_SIZE * (BOARD_SIZE - 1)):
         """Move empty to the target square"""
         print_board(board)
         target_row_index, target_col_index = square_finder(win_con, number)  # Find where a number should be placed
@@ -152,7 +147,8 @@ def self_solve_algorithm(board, win_con):
             if not (target_col_index == BOARD_SIZE - 2 and not (
                     board[target_row_index][target_col_index + 1] == win_con[target_row_index][
                 target_col_index + 1])):  # If the number is in the third row, we check if the fourth is also set
-                continue
+                if not target_row_index >= BOARD_SIZE - 2:  # If the number is in the last 2 rows, do not skip it
+                    continue
 
         empty_row_index, empty_col_index = square_finder(board, 0)  # Find where the empty square is
         empty_to_target_sequence = move_zero_to_target(empty_row_index, empty_col_index, target_row_index,
@@ -204,22 +200,52 @@ def self_solve_algorithm(board, win_con):
                     sequence += "sd"
                 sequence += ARRANGE_LAST_TWO_COLS
                 movement(board, sequence)
-
         else:
-            """Set the numbers in the two bottom rows"""
-            pass
-
-    # empty_row_index, empty_col_index = int(target_row_index), int(target_col_index)
-    # if target_row_index == value_row_index and target_col_index == value_col_index:
-    #     continue
-    # if target_row_index < BOARD_SIZE - 2:
-    #     if target_col_index < BOARD_SIZE - 2:
-    #         """common case"""
-    #     else:
-    #          """posledni dve koloni"""
-    # else:
-    #     """posledni dva reda"""
-    #
+            empty_row_index, empty_col_index = square_finder(board, 0)
+            if empty_row_index < BOARD_SIZE - 2 or empty_col_index < BOARD_SIZE - 2:
+                """Set the numbers in the two bottom rows"""
+                sequence = ""
+                ultimate_number = number + BOARD_SIZE  # Find the number that below the current one
+                ultimate_row_index, ultimate_col_index = square_finder(board,
+                                                                       ultimate_number)  # Bottom number coordinates
+                sequence += movement_of_standard_element(empty_row_index, empty_col_index,
+                                                         ultimate_row_index, ultimate_col_index)
+                movement(board, sequence)
+                sequence = ""
+                empty_row_index, empty_col_index = square_finder(board, 0)
+                value_row_index, value_col_index = square_finder(board, number)
+                ultimate_row_index, ultimate_col_index = square_finder(board,
+                                                                       ultimate_number)  # Bottom number coordinates
+                if empty_row_index > ultimate_row_index:  # If the empty is below the ultimate number
+                    sequence += "dw"  # Move it on its right side
+                    movement(board, sequence)
+                    sequence = ""
+                    empty_row_index, empty_col_index = square_finder(board, 0)
+                    value_row_index, value_col_index = square_finder(board, number)
+                if value_row_index == BOARD_SIZE - 1 and value_col_index == ultimate_col_index:  # Get number out of corner
+                    sequence += GET_SECOND_TO_LAST_NUMBER_OUT
+                    movement(board, sequence)
+                    sequence = ""
+                    empty_row_index, empty_col_index = square_finder(board, 0)
+                    value_row_index, value_col_index = square_finder(board, number)
+                sequence += movement_of_standard_element(empty_row_index, empty_col_index, value_row_index,
+                                                         value_col_index)
+                movement(board, sequence)
+                sequence = ""
+                value_row_index, value_col_index = square_finder(board, number)
+                empty_row_index, empty_col_index = square_finder(board, 0)
+                if empty_col_index > value_col_index:  # If the empty space is on the right side of the value
+                    sequence += "sa"  # Move the empty space below the value
+                sequence += "awd"  # Turn the two numbers counterclockwise to set them
+                movement(board, sequence)
+            else:
+                value_row_index, value_col_index = square_finder(board, number)
+                sequence = "ds"
+                movement(board, sequence)
+                while target_row_index != value_row_index or target_col_index != value_col_index:
+                    sequence = "awds"
+                    movement(board, sequence)
+                    value_row_index, value_col_index = square_finder(board, number)
 
 
 def main():
@@ -227,18 +253,13 @@ def main():
     win_con = generate_board(BOARD_SIZE)
     sequence = generate_movement_sequence(500)
     movement(board, sequence)
-    # board = [
-    #     [1, 9, 10, 2],
-    #     [0, 5, 15, 8],
-    #     [13, 11, 12, 6],
-    #     [4, 7, 14, 3],
-    # ]
-    # win_con = generate_board(BOARD_SIZE)
-    print_board(board)
-    self_solve_algorithm(board, win_con)
     print_board(board)
     while board != win_con:
-        movement(board, take_user_input())
+        input_string = take_user_input()
+        if input_string == "solve":
+            self_solve_algorithm(board, win_con)
+        else:
+            movement(board, input_string)
         print_board(board)
     print("Congrats, you win!")
 
